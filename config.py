@@ -3,7 +3,7 @@ APP_VERSION = "1.0"
 
 # URL веб-приложения Google Apps Script (деплой скрипта таблицы).
 # Пока пусто — программа работает без проверки доступа.
-SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxNhStf1vUoQ6ibQDv6eiCppZr4BRBNQGfRveXAKqnLfeROrEFa50AbwFWxI1QLh-0J/exec"
+SHEET_API_URL = "https://script.google.com/macros/s/AKfycbz3pnOHtduevVhN_4UOLWAXmHgAlYgxUfUI5bFLv6KG42bMc0mI16Rbk2bjgvelnwPj/exec"
 
 # name — что видит проверяющий, exe — файл в папке tools/
 TOOLS = [

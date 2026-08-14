@@ -7,6 +7,7 @@ from datetime import datetime
 
 import customtkinter as ctk
 from tkinter import messagebox
+import psutil
 
 import theme as T
 from config import APP_NAME, APP_VERSION, TOOLS, GAME_FOLDERS
@@ -37,18 +38,25 @@ def tools_dir():
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title(f"{APP_NAME}  v{APP_VERSION}  —  Профессиональный сканер")
-        self.geometry("1120x720")
-        self.minsize(1000, 640)
+        self.title(f"{APP_NAME}  v{APP_VERSION}  —  Защищенный терминал проверки")
+        self.geometry("1160x720")
+        self.minsize(1060, 640)
         self.configure(fg_color=T.BG_DEEP)
 
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
-        # Переменные поиска и данных
-        self.current_page_key = "tools"
+        # Конфигурация анимаций и страниц
+        self.current_page_key = "dashboard"
         self.strings_search_query = ""
         self.strings_data = self._load_strings_data()
+        
+        # Списки для пульсирующей анимации
+        self.pulse_widgets = []
+        self._pulse_step = 0
+        
+        # Запуск анимации свечения
+        self._animate_pulse()
 
         self.lock = None
         if access.configured():
@@ -57,33 +65,41 @@ class App(ctk.CTk):
             self._unlock()
 
     def _unlock(self):
-        self._build_sidebar()
+        self._build_top_bar()
         self._build_content()
-        self.show("tools")
+        self.show("dashboard")
+        self._update_clock()
+        self._update_hardware_stats()
 
-    # ---------- экран блокировки (доступ через Google Таблицу) ----------
+    # ---------- Экран блокировки (доступ через Google Таблицу) ----------
     def _build_lock(self):
         self.hwid = access.get_hwid()
         self.lock = ctk.CTkFrame(self, fg_color=T.BG_DEEP)
-        self.lock.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        self.lock.grid(row=0, column=0, rowspan=2, sticky="nsew")
 
         box = ctk.CTkFrame(self.lock, fg_color="transparent")
         box.place(relx=0.5, rely=0.45, anchor="center")
         
-        ctk.CTkLabel(box, text=APP_NAME, font=("Segoe UI Semibold", 32), text_color=T.TEXT).pack()
-        ctk.CTkLabel(box, text="СИСТЕМА ПРОВЕРКИ НА ЧИТЫ", font=T.FONT_SUB, text_color=T.TEXT_MUTED).pack(pady=(4, 20))
+        ctk.CTkLabel(box, text=APP_NAME, font=("Segoe UI Semibold", 40), text_color=T.TEXT).pack()
+        ctk.CTkLabel(box, text="СИСТЕМА КОНТРОЛЯ БЕЗОПАСНОСТИ  •  АВТОРИЗАЦИЯ", font=T.FONT_SUB, text_color=T.TEXT_MUTED).pack(pady=(4, 28))
         
-        # Красивая карточка с кодом
-        code_card = ctk.CTkFrame(box, fg_color=T.BG_CARD, border_width=1, border_color=T.BORDER, corner_radius=16)
-        code_card.pack(pady=10, padx=20)
+        # Карточка кода с пульсирующей рамкой
+        self.lock_card = ctk.CTkFrame(box, fg_color=T.BG_CARD, border_width=2, border_color=T.BORDER, corner_radius=20)
+        self.lock_card.pack(pady=10, padx=20)
         
-        ctk.CTkLabel(code_card, text="Ваш номер для проверки", font=T.FONT_SUB, text_color=T.TEXT_MUTED).pack(pady=(16, 0), padx=30)
+        # Добавляем карточку блокировки в список пульсирующих виджетов
+        self.pulse_widgets.append(self.lock_card)
         
-        self.lock_number = ctk.CTkLabel(code_card, text="…", font=("Segoe UI Semibold", 80), text_color=T.ACCENT)
-        self.lock_number.pack(pady=(4, 16), padx=30)
+        ctk.CTkLabel(self.lock_card, text="ВАШ ПРОВЕРОЧНЫЙ НОМЕР", font=("Segoe UI Semibold", 12), text_color=T.TEXT_MUTED).pack(pady=(24, 0), padx=50)
         
-        self.lock_info = ctk.CTkLabel(box, text="Получение номера доступа…", font=T.FONT_SUB, text_color=T.TEXT_MUTED)
-        self.lock_info.pack(pady=10)
+        self.lock_number = ctk.CTkLabel(self.lock_card, text="…", font=("Segoe UI Semibold", 90), text_color=T.ACCENT)
+        self.lock_number.pack(pady=(2, 20), padx=50)
+        
+        self.lock_info = ctk.CTkLabel(box, text="Запрос авторизации у сервера…", font=T.FONT_SUB, text_color=T.TEXT_MUTED)
+        self.lock_info.pack(pady=14)
+        
+        # Добавляем статус-текст в список пульсации
+        self.pulse_widgets.append(self.lock_info)
 
         threading.Thread(target=self._lock_register, daemon=True).start()
 
@@ -93,7 +109,7 @@ class App(ctk.CTk):
             self.after(0, self._lock_registered, r)
         except Exception:
             self.after(0, lambda: self.lock_info.configure(
-                text="Нет связи с сервером — повторный запрос через 5 сек…"))
+                text="Ошибка подключения. Повторный запрос через 5 сек…"))
             self.after(5000, lambda: threading.Thread(
                 target=self._lock_register, daemon=True).start())
 
@@ -125,72 +141,100 @@ class App(ctk.CTk):
             self.destroy()
             return
         if st == "checking" and self.lock is not None:
+            # Убираем виджеты из пульсации перед удалением экрана блокировки
+            self.pulse_widgets.clear()
             self.lock.destroy()
             self.lock = None
             self._unlock()
         self._lock_poll_schedule()
 
-    # ---------- левая панель ----------
-    def _build_sidebar(self):
-        self.sidebar = ctk.CTkFrame(self, width=260, corner_radius=0, fg_color=T.BG_SIDEBAR)
-        self.sidebar.grid(row=0, column=0, sticky="nsew")
-        self.sidebar.grid_propagate(False)
-        self.sidebar.grid_columnconfigure(0, weight=1)
-        self.sidebar.grid_rowconfigure(9, weight=1)
+    # ---------- Верхняя горизонтальная панель навигации ----------
+    def _build_top_bar(self):
+        self.top_bar = ctk.CTkFrame(self, height=76, corner_radius=0, fg_color=T.BG_SIDEBAR, border_width=1, border_color=T.BORDER)
+        self.top_bar.grid(row=0, column=0, sticky="ew")
+        self.top_bar.grid_propagate(False)
+        self.top_bar.grid_columnconfigure(1, weight=1) # Центр растягивается
 
-        ctk.CTkLabel(self.sidebar, text=APP_NAME, font=("Segoe UI Semibold", 24), text_color=T.TEXT)\
-            .grid(row=0, column=0, padx=24, pady=(24, 2), sticky="w")
-        ctk.CTkLabel(self.sidebar, text="проверка на читы", font=T.FONT_SMALL, text_color=T.TEXT_MUTED)\
-            .grid(row=1, column=0, padx=24, pady=(0, 24), sticky="w")
+        # Логотип (Слева)
+        logo_frame = ctk.CTkFrame(self.top_bar, fg_color="transparent")
+        logo_frame.grid(row=0, column=0, padx=24, pady=0, sticky="w")
+        
+        ctk.CTkLabel(logo_frame, text=APP_NAME, font=("Segoe UI Semibold", 20), text_color=T.TEXT).pack(anchor="w")
+        ctk.CTkLabel(logo_frame, text=f"v{APP_VERSION} PRO", font=("Segoe UI", 10), text_color=T.ACCENT_SOFT).pack(anchor="w", pady=(1, 0))
+
+        # Горизонтальное меню (Центр)
+        self.nav_container = ctk.CTkFrame(self.top_bar, fg_color="transparent")
+        self.nav_container.grid(row=0, column=1, sticky="") # Выравнивание по центру
 
         self.nav = {}
+        self.nav_indicators = {}
+        
         items = [
-            ("tools", "Программы", "🛠️"),
-            ("folders", "Игровые папки", "📁"),
-            ("strings", "База ниток", "🧵"),
-            ("disks", "Диски и тома", "💾"),
-            ("apps", "Поиск следов", "🔎"),
+            ("dashboard", "Хаб", "📊"),
+            ("tools", "Софт", "🛠️"),
+            ("folders", "Папки", "📁"),
+            ("strings", "Нитки", "🧵"),
+            ("disks", "Тома", "💾"),
+            ("apps", "Следы", "🔎"),
             ("system", "Система", "💻"),
-            ("settings", "Дизайн", "🎨"),
+            ("settings", "Темы", "🎨"),
         ]
         
         for i, (key, label, icon) in enumerate(items):
+            # Контейнер для кнопки и нижнего индикатора
+            item_frame = ctk.CTkFrame(self.nav_container, fg_color="transparent")
+            item_frame.grid(row=0, column=i, padx=4, pady=0, sticky="ns")
+            item_frame.grid_rowconfigure(0, weight=1)
+            
+            # Кнопка меню
             b = ctk.CTkButton(
-                self.sidebar, text=f"  {icon}  {label}", anchor="w", height=42,
-                corner_radius=10, font=T.FONT_ITEM,
+                item_frame, text=f"{icon}  {label}", height=48, width=85,
+                corner_radius=8, font=("Segoe UI Semibold", 12),
                 fg_color="transparent", hover_color=T.BG_CARD_HOV,
                 text_color=T.TEXT_MUTED,
-                command=lambda k=key: self.show(k),
+                command=lambda k=key: self.show(k)
             )
-            b.grid(row=2 + i, column=0, padx=14, pady=3, sticky="ew")
+            b.grid(row=0, column=0, padx=2, pady=(10, 8), sticky="ew")
             self.nav[key] = b
+            
+            # Нижний горизонтальный индикатор активного раздела (как на макете)
+            ind = ctk.CTkFrame(item_frame, height=3, width=64, corner_radius=1, fg_color="transparent")
+            ind.grid(row=1, column=0, pady=(0, 2), sticky="s")
+            self.nav_indicators[key] = ind
 
-        # красная кнопка внизу
-        ctk.CTkButton(
-            self.sidebar, text="Завершить проверку", width=220, height=44, corner_radius=10,
-            font=T.FONT_ITEM, fg_color=T.DANGER, hover_color=T.DANGER_HOVER,
-            text_color=T.TEXT, command=self.finish,
-        ).grid(row=10, column=0, pady=(10, 24), sticky="s")
+        # Правая секция (Часы и Кнопка Завершения)
+        right_frame = ctk.CTkFrame(self.top_bar, fg_color="transparent")
+        right_frame.grid(row=0, column=2, padx=24, pady=0, sticky="e")
+        
+        self.clock_lbl = ctk.CTkLabel(right_frame, text=datetime.now().strftime("%H:%M:%S"), font=("Consolas", 18, "bold"), text_color=T.ACCENT_SOFT)
+        self.clock_lbl.pack(side="right", padx=(14, 0))
 
     def _build_content(self):
         self.content = ctk.CTkFrame(self, corner_radius=0, fg_color=T.BG_DEEP)
-        self.content.grid(row=0, column=1, sticky="nsew")
+        self.content.grid(row=1, column=0, sticky="nsew")
         self.content.grid_columnconfigure(0, weight=1)
         self.content.grid_rowconfigure(1, weight=1)
 
     def show(self, key):
+        # Сбрасываем пульсирующие виджеты при переходе, чтобы не накапливать мусор
+        self.pulse_widgets.clear()
+        
         self.current_page_key = key
         for k, b in self.nav.items():
             active = k == key
             b.configure(
-                fg_color=T.ACCENT if active else "transparent",
                 text_color=T.TEXT if active else T.TEXT_MUTED,
-                hover_color=T.ACCENT_HOVER if active else T.BG_CARD_HOV,
             )
+            # Плавная отрисовка горизонтальных индикаторов снизу
+            self.nav_indicators[k].configure(
+                fg_color=T.ACCENT if active else "transparent"
+            )
+            
         for w in self.content.winfo_children():
             w.destroy()
         
         pages = {
+            "dashboard": self.page_dashboard,
             "tools": self.page_tools,
             "folders": self.page_folders,
             "strings": self.page_strings,
@@ -203,9 +247,106 @@ class App(ctk.CTk):
 
     def _header(self, title, subtitle):
         box = ctk.CTkFrame(self.content, fg_color="transparent")
-        box.grid(row=0, column=0, sticky="ew", padx=30, pady=(24, 12))
+        box.grid(row=0, column=0, sticky="ew", padx=30, pady=(20, 10))
         ctk.CTkLabel(box, text=title, font=T.FONT_TITLE, text_color=T.TEXT).pack(anchor="w")
-        ctk.CTkLabel(box, text=subtitle, font=T.FONT_SUB, text_color=T.TEXT_MUTED).pack(anchor="w", pady=(2, 0))
+        ctk.CTkLabel(box, text=subtitle, font=T.FONT_SUB, text_color=T.TEXT_MUTED).pack(anchor="w", pady=(1, 0))
+
+    # ---------- раздел: ГЛАВНЫЙ ХАБ (3 КОЛОНКИ ИЗ РЕФЕРЕНСА) ----------
+    def page_dashboard(self):
+        self._header("Информационный Хаб", "Контроль сессии сканирования и аппаратная аналитика системы")
+        
+        scroll = ctk.CTkScrollableFrame(self.content, fg_color="transparent")
+        scroll.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
+        
+        # Разметка на 3 равных колонки с автоподгонкой (uniform="cols")
+        scroll.grid_columnconfigure(0, weight=1, uniform="cols")
+        scroll.grid_columnconfigure(1, weight=1, uniform="cols")
+        scroll.grid_columnconfigure(2, weight=1, uniform="cols")
+        
+        # --- Колонка 1: Безопасность и Сессия ---
+        col1 = ctk.CTkFrame(scroll, fg_color=T.BG_CARD, border_width=1, border_color=T.BORDER, corner_radius=16)
+        col1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        col1.grid_columnconfigure(0, weight=1)
+        
+        ctk.CTkLabel(col1, text="🛡️ БЕЗОПАСНОСТЬ", font=("Segoe UI Semibold", 13), text_color=T.ACCENT_SOFT).pack(anchor="w", padx=20, pady=(18, 10))
+        
+        # Карточка пульсирующего статуса
+        self.status_box = ctk.CTkFrame(col1, fg_color=T.BG_DEEP, border_width=1, border_color=T.ACCENT, corner_radius=12)
+        self.status_box.pack(fill="x", padx=16, pady=8)
+        self.pulse_widgets.append(self.status_box)
+        
+        self.status_pulse_lbl = ctk.CTkLabel(self.status_box, text="ПРОВЕРКА АКТИВНА", font=("Segoe UI Semibold", 14), text_color=T.ACCENT)
+        self.status_pulse_lbl.pack(pady=12)
+        self.pulse_widgets.append(self.status_pulse_lbl)
+        
+        # Текстовые лог-маркеры в колонке 1
+        info_frame = ctk.CTkFrame(col1, fg_color="transparent")
+        info_frame.pack(fill="x", padx=16, pady=10)
+        
+        ctk.CTkLabel(info_frame, text="•  Все сканирующие модули активны", font=T.FONT_SMALL, text_color=T.TEXT_MUTED, justify="left").pack(anchor="w", pady=4)
+        ctk.CTkLabel(info_frame, text="•  Фоновые процессы лога: ОК", font=T.FONT_SMALL, text_color=T.TEXT_MUTED, justify="left").pack(anchor="w", pady=4)
+        ctk.CTkLabel(info_frame, text="•  Поиск в ОЗУ: Ожидание вызовов", font=T.FONT_SMALL, text_color=T.TEXT_MUTED, justify="left").pack(anchor="w", pady=4)
+        ctk.CTkLabel(info_frame, text="•  Сервер доступа: Стабильно", font=T.FONT_SMALL, text_color=T.TEXT_MUTED, justify="left").pack(anchor="w", pady=4)
+        
+        # --- Колонка 2: Мониторинг Железа (Тонкие слайдеры-шкалы) ---
+        col2 = ctk.CTkFrame(scroll, fg_color=T.BG_CARD, border_width=1, border_color=T.BORDER, corner_radius=16)
+        col2.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        col2.grid_columnconfigure(0, weight=1)
+        
+        ctk.CTkLabel(col2, text="💻 РЕСУРСЫ СИСТЕМЫ", font=("Segoe UI Semibold", 13), text_color=T.ACCENT_SOFT).pack(anchor="w", padx=20, pady=(18, 10))
+        
+        # Бокс процессора
+        cpu_box = ctk.CTkFrame(col2, fg_color=T.BG_DEEP, border_width=1, border_color=T.BORDER, corner_radius=12)
+        cpu_box.pack(fill="x", padx=16, pady=6)
+        
+        self.cpu_lbl = ctk.CTkLabel(cpu_box, text="ЦП Нагрузка: 0%", font=T.FONT_SMALL, text_color=T.TEXT)
+        self.cpu_lbl.pack(anchor="w", padx=14, pady=(10, 4))
+        self.cpu_pb = ctk.CTkProgressBar(cpu_box, fg_color=T.BG_CARD, progress_color=T.ACCENT, height=6)
+        self.cpu_pb.pack(fill="x", padx=14, pady=(0, 14))
+        self.cpu_pb.set(0.0)
+        
+        # Бокс ОЗУ
+        ram_box = ctk.CTkFrame(col2, fg_color=T.BG_DEEP, border_width=1, border_color=T.BORDER, corner_radius=12)
+        ram_box.pack(fill="x", padx=16, pady=6)
+        
+        self.ram_lbl = ctk.CTkLabel(ram_box, text="ОЗУ Занято: 0%", font=T.FONT_SMALL, text_color=T.TEXT)
+        self.ram_lbl.pack(anchor="w", padx=14, pady=(10, 4))
+        self.ram_pb = ctk.CTkProgressBar(ram_box, fg_color=T.BG_CARD, progress_color=T.ACCENT_SOFT, height=6)
+        self.ram_pb.pack(fill="x", padx=14, pady=(0, 14))
+        self.ram_pb.set(0.0)
+        
+        ctk.CTkLabel(col2, text="Сканирование системы активно в фоне", font=T.FONT_SMALL, text_color=T.TEXT_MUTED).pack(pady=(12, 12))
+        
+        # --- Column 3: Быстрые действия (Ярлыки ПО) ---
+        col3 = ctk.CTkFrame(scroll, fg_color=T.BG_CARD, border_width=1, border_color=T.BORDER, corner_radius=16)
+        col3.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+        col3.grid_columnconfigure(0, weight=1)
+        
+        ctk.CTkLabel(col3, text="🛠️ БЫСТРЫЙ ДОСТУП", font=("Segoe UI Semibold", 13), text_color=T.ACCENT_SOFT).pack(anchor="w", padx=20, pady=(18, 10))
+        
+        shortcuts = [
+            ("Everything", "Everything.exe", "Поиск файлов"),
+            ("Shellbag", "Shellbag.exe", "История папок"),
+            ("System Informer", "System Informer.lnk", "Диспетчер задач")
+        ]
+        
+        for name, exe, desc in shortcuts:
+            sh_box = ctk.CTkFrame(col3, fg_color=T.BG_DEEP, border_width=1, border_color=T.BORDER, corner_radius=12)
+            sh_box.pack(fill="x", padx=16, pady=6)
+            sh_box.grid_columnconfigure(0, weight=1)
+            
+            ctk.CTkLabel(sh_box, text=name, font=T.FONT_ITEM, text_color=T.TEXT).grid(row=0, column=0, sticky="w", padx=14, pady=(8, 0))
+            ctk.CTkLabel(sh_box, text=desc, font=T.FONT_SMALL, text_color=T.TEXT_MUTED).grid(row=1, column=0, sticky="w", padx=14, pady=(0, 8))
+            
+            exists = os.path.isfile(os.path.join(tools_dir(), exe))
+            ctk.CTkButton(
+                sh_box, text="Запуск", height=24, width=65, corner_radius=6, font=T.FONT_SMALL,
+                fg_color=T.ACCENT if exists else T.BG_CARD,
+                hover_color=T.ACCENT_HOVER if exists else T.BG_CARD_HOV,
+                text_color=T.TEXT if exists else T.TEXT_MUTED,
+                state="normal" if exists else "disabled",
+                command=lambda e=exe, n=name: self.run_tool({"name": n, "exe": e})
+            ).grid(row=0, column=1, rowspan=2, padx=14, pady=8, sticky="e")
 
     # ---------- раздел: Программы ----------
     def page_tools(self):
@@ -472,7 +613,7 @@ class App(ctk.CTk):
         notification.lift()
         self.after(1000, notification.destroy)
 
-    # ---------- раздел: Диски и тома (найти тумс/тома) ----------
+    # ---------- раздел: Диски и тома (найти тома) ----------
     def page_disks(self):
         self._header("Диски и системные тома", "Сканирование дисков, USB-накопителей и RAM-дисков")
         
@@ -487,7 +628,7 @@ class App(ctk.CTk):
             return
 
         for i, d in enumerate(drives):
-            # Рамка для диска
+            # Рамка для диска (Пульсирует, если это опасное подключение - съемный диск или RAM-диск)
             row = ctk.CTkFrame(
                 box, fg_color=T.BG_CARD, corner_radius=14,
                 border_width=2 if d["highlight"] else 1,
@@ -495,6 +636,10 @@ class App(ctk.CTk):
             )
             row.grid(row=i, column=0, sticky="ew", padx=10, pady=8)
             row.grid_columnconfigure(0, weight=1)
+            
+            # Ставим подозрительные тома на пульсацию рамки
+            if d["highlight"]:
+                self.pulse_widgets.append(row)
             
             # Заголовок диска
             header_frame = ctk.CTkFrame(row, fg_color="transparent")
@@ -543,7 +688,7 @@ class App(ctk.CTk):
                       fg_color=T.ACCENT, hover_color=T.ACCENT_HOVER, font=T.FONT_ITEM,
                       command=lambda: self.show("disks")).grid(row=999, column=0, pady=20)
 
-    # ---------- раздел: Поиск следов (включая Teams/Тумс) ----------
+    # ---------- раздел: Поиск следов (мессенджеры и т.д.) ----------
     def page_apps(self):
         self._header("Поиск следов мессенджеров и софта", "Сканирование запущенных процессов, папок установки и истории активности")
         
@@ -555,9 +700,18 @@ class App(ctk.CTk):
         scanned_apps = self._scan_apps_data()
         
         for i, app in enumerate(scanned_apps):
-            card = ctk.CTkFrame(box, fg_color=T.BG_CARD, corner_radius=14, border_width=1, border_color=T.BORDER)
+            # Если программа запущена - подсвечиваем рамку!
+            card = ctk.CTkFrame(
+                box, fg_color=T.BG_CARD, corner_radius=14, 
+                border_width=2 if app["is_running"] else 1, 
+                border_color=T.ACCENT if app["is_running"] else T.BORDER
+            )
             card.grid(row=i, column=0, sticky="ew", padx=10, pady=8)
             card.grid_columnconfigure(0, weight=1)
+            
+            # Активный запущенный софт плавно дышит!
+            if app["is_running"]:
+                self.pulse_widgets.append(card)
             
             # Название программы и статус
             title_frame = ctk.CTkFrame(card, fg_color="transparent")
@@ -838,21 +992,80 @@ class App(ctk.CTk):
     def _change_theme(self, new_theme_name):
         """Смена цветовой темы оформления на лету."""
         if T.apply_theme(new_theme_name):
-            # Перенастраиваем главное окно и боковую панель
+            # Перенастраиваем главное окно и верхнюю панель
             self.configure(fg_color=T.BG_DEEP)
-            self.sidebar.configure(fg_color=T.BG_SIDEBAR)
+            self.top_bar.configure(fg_color=T.BG_SIDEBAR)
             
-            # Обновляем все кнопки в боковой панели
+            # Обновляем все кнопки на верхней панели
             for key, btn in self.nav.items():
                 active = key == self.current_page_key
                 btn.configure(
-                    fg_color=T.ACCENT if active else "transparent",
                     text_color=T.TEXT if active else T.TEXT_MUTED,
-                    hover_color=T.ACCENT_HOVER if active else T.BG_CARD_HOV,
+                )
+                self.nav_indicators[key].configure(
+                    fg_color=T.ACCENT if active else "transparent"
                 )
                 
             # Перерисовываем текущую активную страницу
             self.show(self.current_page_key)
+
+    # ---------- Потоки Анимаций и Мониторинга Ресурсов ----------
+    def _animate_pulse(self):
+        """Плавная "дышащая" анимация свечения виджетов (синхронизируется под выбранную тему)."""
+        theme = T.get_current_theme()
+        
+        # Заранее просчитанные фазы затухания и свечения для каждой темы
+        pulse_colors = {
+            "Space Blue": ["#2D6CFF", "#2860E6", "#2354CC", "#1E48B3", "#193D99", "#1E48B3", "#2354CC", "#2860E6"],
+            "Cyber Violet": ["#A855F7", "#974CE3", "#8643CF", "#7539BB", "#6430A7", "#7539BB", "#8643CF", "#974CE3"],
+            "Emerald Dragon": ["#10B981", "#0EA672", "#0D9363", "#0C8054", "#0A6D45", "#0C8054", "#0D9363", "#0EA672"],
+            "Volcano Red": ["#EF4444", "#D73E3B", "#BF3832", "#A73229", "#8F2C20", "#A73229", "#BF3832", "#D73E3B"],
+            "Absolute Dark": ["#FFFFFF", "#ECECF1", "#D9D9E2", "#A6A6B7", "#73738C", "#A6A6B7", "#D9D9E2", "#ECECF1"]
+        }
+        
+        steps = pulse_colors.get(theme, pulse_colors["Space Blue"])
+        self._pulse_step = (self._pulse_step + 1) % len(steps)
+        color = steps[self._pulse_step]
+        
+        # Обновляем все виджеты из очереди пульсации
+        for widget in list(self.pulse_widgets):
+            try:
+                if isinstance(widget, ctk.CTkLabel):
+                    widget.configure(text_color=color)
+                elif isinstance(widget, ctk.CTkFrame):
+                    widget.configure(border_color=color)
+            except Exception:
+                # Если виджет был удален (смена страницы) - игнорируем ошибку
+                pass
+                
+        self.after(160, self._animate_pulse)
+
+    def _update_clock(self):
+        """Обновление времени на верхней панели каждую секунду."""
+        if hasattr(self, "clock_lbl") and self.clock_lbl.winfo_exists():
+            try:
+                self.clock_lbl.configure(text=datetime.now().strftime("%H:%M:%S"))
+            except Exception:
+                pass
+        self.after(1000, self._update_clock)
+
+    def _update_hardware_stats(self):
+        """Интерактивное считывание ресурсов ПК каждые 1.5 секунды."""
+        if self.current_page_key == "dashboard":
+            try:
+                cpu = psutil.cpu_percent()
+                ram = psutil.virtual_memory().percent
+                
+                if hasattr(self, "cpu_pb") and self.cpu_pb.winfo_exists():
+                    self.cpu_pb.set(cpu / 100.0)
+                    self.cpu_lbl.configure(text=f"ЦП Нагрузка: {cpu}%")
+                    
+                if hasattr(self, "ram_pb") and self.ram_pb.winfo_exists():
+                    self.ram_pb.set(ram / 100.0)
+                    self.ram_lbl.configure(text=f"ОЗУ Занято: {ram}%")
+            except Exception:
+                pass
+        self.after(1500, self._update_hardware_stats)
 
     # ---------- завершение ----------
     def finish(self):

@@ -36,7 +36,7 @@ function doGet(e) {
 }
 
 function getSheet() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById("1nKNm9m_SVFk9MgElfqL4AWSqj2ek1_qv7T3k8YW7Z5o");
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
