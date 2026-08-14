@@ -1,0 +1,102 @@
+=================Everything=================
+
+Baritone | cabaletta | Jigsaw | LiquidBounce | Wurst | GishCode | Inertia | Impact | Doomsday | rename_me_please.dll | Future | RusherHack | Pyro | Zamorozka | Konas | WintWare | Nursultan | Norules | Akrien | Sigma | DeadCode | Eternity | WEXSIDE | Rich | RichPremium | EdItMe.dll | BleachHack | mc100.dll | Matix | R3D | Celestial | Wild | Destroy | ArchWare | NightMare | BoberWare | FLauncher | ExLoader | celka | Expensive | BebraWare | Meteor | Minced | NeverHook | Vape | Dreampool | Hitbox | dauntiblyat.dll | Nurik | Cortex | CortexClient | Walk | Highlighter | AimBot | FreeCam | breaker | Wise | hotbar | moving | stealer | Sight | MobHealthBar | GUMBALLOFFMODE | Tweakeroo | PlayerHealthIndicators | AutoAttack | InventoryTotem | ViaVersion | ViaForge | ViaMCP | Elytra | armorhotswap | locatоr | locater | anvi | Excellent | X-Ray | Schematica | ReplayMod | FreeLook | ChestStealer | GumbaloffClient | WorldEdit | GoProne | AutoAttack | DiamondGen | InventoryProfilesNext | CleanCut | killaura | bushroot | wao | cheat | 1.16.5 | Flux | ZenWare | free | premium | recode | impact | wurst | bleachhack | aristois | huzuni | skillclient | inertia | ares | sigma | meteor | liquidbounce | nurik | nursultan | celestial | calestial | celka | expensive | neverhook | excellent | wexside | wildclient | minced | deadcode | akrien | jigsaw | future | jessica | dreampool | norules | konas | richclient | rusherhack | thunderhack | moonhack | doomsday | nightware | ricardo | extazyy | troxill | antileak | arbuz | .akr | .wex | rename_me_please | editme | takker | fuzeclient | wisefolder | flauncher | vec.dll | USBOblivion.exe | Feather | delta | venus | baritone | CleanCut | inventory_walk | player_highlighter | aimbot | freecam | bedrock_breaker_mode | double_hotbar | elytra_swap | armor_hotswap | smart_moving | chest | savesearcher | topkautobuy | topkaautobuy | tweakeroo | mob_hitbox | librarian_trade_finder | autoattack | entity_outliner | invmove | hitbox | elytrahack | DiamondSim | ForgeHax | clientcommands | Control-Tweaks | SwingThroughGrass | CutThrough | Zenith | Horizen | Toffi | .sraka | .celka | skytime | LiquidLauncher
+
+size:2263|size:5266|size:6515|size:6770|size:6778|size:7016|size:7218|size:7803|size:7891|size:9327|size:10283|size:10605|size:10958|size:11554|size:16541|size:17308|size:17339|size:18180|size:18527|size:18587|size:18734|size:19266|size:20578|size:20583|size:20639|size:20883|size:21161|size:21234|size:21664|size:22036|size:22861|size:26247|size:27546|size:27809|size:28084|size:28439|size:29304|size:29567|size:30279|size:31549|size:31607|size:34449|size:34669|size:35971|size:35993|size:38149|size:39017|size:39321|size:40142|size:42782|size:47159|size:48242|size:50828|size:51212|size:52426|size:54088|size:59381|size:62782|size:65316|size:65486|size:65765|size:66659|size:67491|size:68794|size:69757|size:72334|size:74105|size:80751|size:88896|size:95530|size:98811|size:100523|size:100799|size:101297|size:101571|size:101703|size:102297|size:102733|size:103761|size:104954|size:105623|size:105672|size:112386|size:120640|size:138417|size:143006|size:143597|size:143600|size:147329|size:147873|size:151762|size:153937|size:156722|size:156779|size:166677|size:169718|size:173698|size:183634|size:183651|size:192156|size:202720|size:257482|size:263070|size:267746|size:274865|size:300286|size:334588|size:343169|size:350629|size:409616|size:410358|size:517248|size:519731|size:532826|size:539151|size:556494|size:597406|size:636621|size:640838|size:878781|size:925493|size:1077149|size:1165063|size:1181556|size:1444714|size:1471429|size:1569093|size:1822841|size:3113569|size:3425801|size:3541075|size:3541138|size:3642292|size:3684385|size:4642998|size:5630483|size:7052171|size:7059952|size:22258750|size:25704986|size:26179274|size:26691896 *.jar
+
+.exe size:12mb-25mb
+
+===Сайз на Hitbox dll
+size:30720 utf8content:net/minecraft/client/entity/player/ClientPlayerEntity|net/minecraft/util/math/AxisAlignedBB
+
+===Сайз на DoomsDay(Вводить в Everything 1.5a):
+
+ext:jar
+
+
+size:21kb-10mb content:"l.png" content:"mcmod.info"
+ 
+size:21kb-10mb utf8content:net/java/s.class | utf8content:net/java/f.class
+
+Сайз на Faker
+size:10mb-12mb utf8content:net/java/faker/
+
+Сайз на лоадер SystemDLC
+size:1mb-25mb text-plain-content:¨ì{åÃ·Ÿ“/?yU¾;÷¶\üú=¹„
+
+Сайз на лоадер Cortex
+size:500kb-20mb text-plain-content:?OÞ¦jîÒË0g‚Œº4ß
+
+Сайз на скрытие
+size:20kb-500kb text-plain-content:$lstVisible.SelectedIndices
+
+size:10mb-25mb text-plain-content:[â%G€TèôË?’KÅ€ëyêuèS
+
+===Хитбоксы
+
+*.jar size:7kb|size:8kb|size:10kb|size:11kb|size:27kb|size:18kb|size:19kb|size:23kb|size:27kb|size:28kb|size:29kb|size:30kb|size:33kb|size:36kb|size:38kb|size:39kb|size:40kb|size:66|size:68kb|size:87kb|size:94kb|size:118kb|size:136kb|size:140kb|size:166kb|size:180kb|size:343kb|size:508kb|size:622kb|size:859kb|size1138kb
+
+Для поиска запрещенных модов 
+
+size:9951744|size:24536064|size:15438336|size:6229504|size:6573056|size:7187456|size:7969792|size:1562249|size:1672329|size:1677449|size:1680521|size:147329|size:138351|size:202720|size:7788032|size:7988736|size:3711166|size:3697285|size:3712014
+
+===Для поиска всяких длл-ок 
+
+*.dll size:7481kb|size:5796kb|size:1713kb|size:1642kb|size:1526kb|size:1528kb|size:1496kb|size:30720
+
+================= System Informer =================
+
+Нитки(стринги) на DoomsDay НА ВСЕ ВЕРСИИ:
+
+RoCQXjiLhWcfmsb | 15 length
+
+sXNEdnSpUdmg[I[]RKq | length 19 
+
+Uoi0ODoru50dg& | length 14
+
+SCnZ]xlpqbJYeL | length 14
+
+bZGqnxkxvcKXYkV]S] | length 18
+
+TseMJUsghkH]mTn | length 15
+
+GR\JFIPusuTlo | length 13
+
+sT\ngaIOFTrSU | length 13
+
+jmkEdmfqwrlFcOtb | length 16
+
+HXEDpHbpRJCyiNK\P | length 17
+
+qcamY`PqXTMwOGQ^ | length 16
+
+================= LabyMod3 Addons =================
+
+BetterToolTips  |  15kb 
+CustomHitboxes  |  276 kb 
+ChatUtils  |  226kb 
+ItemPhysics 225kb 
+CustomMainMenu  |  6533kb 
+perspectiveModRedux  |  93kb
+CustomBlockOverlay  |  20kb (ВЕС НЕ МЕНЯЕТСЯ) 
+TNT Timer  |  13kb 
+tape mouse  |  (forge 1.16.5) 508kb 
+
+================= Ссылки =================
+Everything - https://www.voidtools.com/Everything-1.5.0.1409a.x64-Setup.exe
+Shellbag - https://privazer.com/ru/download-shellbag-analyzer-shellbag-cleaner.php
+LastActivityView - https://www.nirsoft.net/utils/lastactivityview.zip
+CachedProgramList - https://github.com/ponei/CachedProgramsList/releases
+ExecutedProgramList - https://www.nirsoft.net/utils/executed_programs_list.html 
+JournalTrace - https://github.com/ponei/JournalTrace/releases 
+SystemInformer - https://systeminformer.com/downloads
+WinPrefetchView - https://www.nirsoft.net/utils/win_prefetch_view.html
+BrowserDownloadView - https://www.nirsoft.net/utils/web_browser_downloads_view.html
+UsbDriveLog - https://www.nirsoft.net/utils/usb_drive_log.html
+Luyten - https://github.com/deathmarine/Luyten/releases
+HxD - https://mh-nexus.de/en/downloads.php?product=HxD20
+AnyDesk - https://anydesk.com/en
+WinRar - https://www.win-rar.com/predownload.html?&L=4
+
+!!!=====Другие программы вне этого списка запрещены для использования.=====!!!
+!!!=====Исключение: разрешение Руководителя/Заместителя ОП

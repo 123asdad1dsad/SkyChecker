@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyChecker — Панель Управления Модератора</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B1220;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen pb-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <!-- Шапка -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-6 mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                    <span class="text-blue-500">🌌</span> SkyChecker Admin
+                </h1>
+                <p class="text-slate-400 mt-1 text-sm">Управление статусами игроков и доступами к утилите проверки в реальном времени</p>
+            </div>
+            
+            <!-- Конфигурация API -->
+            <div class="flex items-center gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/80 w-full md:w-auto">
+                <input type="text" id="apiUrlInput" placeholder="Вставьте Web App URL из Google Apps Script..." 
+                       class="bg-slate-950 border border-slate-700/60 rounded-lg px-3 py-1.5 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:border-blue-500 w-full md:w-80">
+                <button onclick="saveApiUrl()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-colors shrink-0">
+                    Сохранить URL
+                </button>
+            </div>
+        </header>
+
+        <!-- Статистика -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-slate-900/40 border border-slate-800/80 p-5 rounded-2xl">
+                <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Всего запросов</p>
+                <p id="statTotal" class="text-3xl font-bold text-white mt-1">0</p>
+            </div>
+            <div class="bg-yellow-500/10 border border-yellow-500/20 p-5 rounded-2xl">
+                <p class="text-xs text-yellow-400 font-medium uppercase tracking-wider">Ожидают (блокировка)</p>
+                <p id="statWaiting" class="text-3xl font-bold text-yellow-400 mt-1">0</p>
+            </div>
+            <div class="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-2xl">
+                <p class="text-xs text-emerald-400 font-medium uppercase tracking-wider">Разрешено (проверка)</p>
+                <p id="statChecking" class="text-3xl font-bold text-emerald-400 mt-1">0</p>
+            </div>
+            <div class="bg-red-500/10 border border-red-500/20 p-5 rounded-2xl">
+                <p class="text-xs text-red-400 font-medium uppercase tracking-wider">Запрещено (бан)</p>
+                <p id="statDenied" class="text-3xl font-bold text-red-400 mt-1">0</p>
+            </div>
+        </div>
+
+        <!-- Контрольная панель таблицы -->
+        <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <!-- Поиск -->
+                <div class="relative max-w-xs w-full">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500 text-sm">🔍</span>
+                    <input type="text" id="searchInput" oninput="filterTable()" placeholder="Поиск по HWID или номеру..." 
+                           class="bg-slate-950/80 border border-slate-800 text-slate-300 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-blue-500 w-full placeholder-slate-500">
+                </div>
+                
+                <!-- Статус обновления -->
+                <div class="flex items-center gap-3 self-end sm:self-auto">
+                    <span id="updateStatusText" class="text-xs text-slate-500">Автообновление: каждые 4 сек</span>
+                    <button onclick="fetchData()" id="refreshBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white p-2 rounded-xl border border-slate-700/60 transition-colors flex items-center gap-2 text-sm">
+                        <span id="spinner" class="hidden animate-spin">⏳</span>
+                        <span>Обновить данные</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Таблица -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-800">
+                    <thead class="bg-slate-950/30">
+                        <tr>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider w-16">№</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Идентификатор (HWID)</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Время подключения</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider w-40">Статус</th>
+                            <th scope="col" class="px-6 py-4 class-left text-xs font-semibold text-slate-400 uppercase tracking-wider text-right pr-6 w-96">Действия доступа</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-800/60 bg-transparent">
+                        <!-- Сюда вставляются строки -->
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-slate-500 text-sm">
+                                Вставьте URL веб-приложения Google Apps Script для загрузки данных
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Всплывающие подсказки -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-emerald-600 border border-emerald-500 text-white px-5 py-3 rounded-xl shadow-2xl opacity-0 transform translate-y-2 transition-all duration-300 text-sm font-semibold pointer-events-none z-50">
+        Успешно обновлено!
+    </div>
+
+    <script>
+        let scriptUrl = localStorage.getItem('skychecker_api_url') || '';
+        let timer = null;
+
+        // При запуске
+        document.addEventListener('DOMContentLoaded', () => {
+            if (scriptUrl) {
+                document.getElementById('apiUrlInput').value = scriptUrl;
+                fetchData();
+                startAutoUpdate();
+            }
+        });
+
+        function saveApiUrl() {
+            const url = document.getElementById('apiUrlInput').value.trim();
+            if (!url) {
+                alert('Пожалуйста, введите URL!');
+                return;
+            }
+            if (!url.startsWith('https://script.google.com/')) {
+                alert('Некорректный URL! Должен начинаться с https://script.google.com/');
+                return;
+            }
+            scriptUrl = url;
+            localStorage.setItem('skychecker_api_url', url);
+            showToast('API URL сохранен!');
+            fetchData();
+            startAutoUpdate();
+        }
+
+        function startAutoUpdate() {
+            if (timer) clearInterval(timer);
+            timer = setInterval(fetchData, 4000);
+        }
+
+        function showToast(text, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.innerText = text;
+            if (isError) {
+                toast.classList.remove('bg-emerald-600', 'border-emerald-500');
+                toast.classList.add('bg-red-600', 'border-red-500');
+            } else {
+                toast.classList.remove('bg-red-600', 'border-red-500');
+                toast.classList.add('bg-emerald-600', 'border-emerald-500');
+            }
+            toast.classList.remove('opacity-0', 'translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-2');
+            }, 2500);
+        }
+
+        let allRowsData = [];
+
+        async function fetchData() {
+            if (!scriptUrl) return;
+            
+            const spinner = document.getElementById('spinner');
+            spinner.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`${scriptUrl}?action=list`, { redirect: 'follow' });
+                const res = await response.json();
+                
+                if (res.ok && res.data) {
+                    allRowsData = res.data;
+                    renderTable(res.data);
+                    updateStats(res.data);
+                    document.getElementById('updateStatusText').innerText = 'Последнее обновление: ' + new Date().toLocaleTimeString();
+                } else {
+                    console.error('Ошибка при загрузке:', res.error);
+                }
+            } catch (err) {
+                console.error('Сетевая ошибка при загрузке:', err);
+                document.getElementById('updateStatusText').innerText = 'Ошибка соединения!';
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function updateStats(data) {
+            document.getElementById('statTotal').innerText = data.length;
+            document.getElementById('statWaiting').innerText = data.filter(r => sMatch(r.status, 'ожидание')).length;
+            document.getElementById('statChecking').innerText = data.filter(r => sMatch(r.status, 'проверка')).length;
+            document.getElementById('statDenied').innerText = data.filter(r => sMatch(r.status, ['запрещено', 'отклонено', 'denied'])).length;
+        }
+
+        function sMatch(current, target) {
+            const val = (current || '').toLowerCase().trim();
+            if (Array.isArray(target)) {
+                return target.some(t => val === t.toLowerCase());
+            }
+            return val === target.toLowerCase();
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-slate-500 text-sm">
+                            Активные сессии проверок не обнаружены
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            data.forEach(row => {
+                // Стиль статуса
+                let statusBadge = '';
+                const st = row.status.toLowerCase().trim();
+                
+                if (st === 'ожидание') {
+                    statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-400/10 text-yellow-400 border border-yellow-500/20">⌛ Ожидание</span>`;
+                } else if (st === 'проверка') {
+                    statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">🟢 Проверяется</span>`;
+                } else if (st === 'запрещено' || st === 'отклонено' || st === 'denied') {
+                    statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">🔴 Заблокирован</span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20">${row.status}</span>`;
+                }
+
+                // Форматируем дату
+                let dateStr = 'нет данных';
+                if (row.added) {
+                    try {
+                        const d = new Date(row.added);
+                        dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    } catch(e) {}
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/20 transition-colors';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-300">#${row.number}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-blue-400 select-all">${row.hwid}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-400">${dateStr}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${statusBadge}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right pr-6 flex items-center justify-end gap-2 h-full">
+                        <button onclick="updateStatus('${row.hwid}', 'проверка')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors">
+                            Разрешить
+                        </button>
+                        <button onclick="updateStatus('${row.hwid}', 'запрещено')" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-colors">
+                            Запретить
+                        </button>
+                        <button onclick="updateStatus('${row.hwid}', 'ожидание')" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-semibold rounded-lg transition-colors border border-slate-600/40">
+                            Ожидание
+                        </button>
+                        <button onclick="updateStatus('${row.hwid}', 'проверка окончена')" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 text-xs font-semibold rounded-lg transition-colors border border-amber-500/20">
+                            Окончить
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function updateStatus(hwid, statusValue) {
+            if (!scriptUrl) return;
+            
+            try {
+                const response = await fetch(`${scriptUrl}?action=update&hwid=${encodeURIComponent(hwid)}&status=${encodeURIComponent(statusValue)}`, { redirect: 'follow' });
+                const res = await response.json();
+                
+                if (res.ok) {
+                    showToast('Статус успешно изменен!');
+                    fetchData(); // Срочно перегружаем данные
+                } else {
+                    alert('Ошибка обновления статуса: ' + res.error);
+                }
+            } catch (err) {
+                console.error('Сетевая ошибка при обновлении:', err);
+                showToast('Ошибка сетевого запроса!', true);
+            }
+        }
+
+        function filterTable() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (!query) {
+                renderTable(allRowsData);
+                return;
+            }
+            
+            const filtered = allRowsData.filter(r => {
+                return String(r.number).includes(query) || r.hwid.toLowerCase().includes(query);
+            });
+            renderTable(filtered);
+        }
+    </script>
+</body>
+</html>
